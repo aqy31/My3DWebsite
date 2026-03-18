@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>معرض المقتنيات الرافدينية</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Tajawal:wght@300;400;500&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; touch-action: none; }
+        body { overflow: hidden; background-color: #05080c; font-family: 'Tajawal', sans-serif; }
+        #webgl { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; }
+
+        #info-ui {
+            position: absolute; 
+            background: linear-gradient(135deg, rgba(15, 25, 40, 0.9) 0%, rgba(5, 10, 15, 0.95) 100%);
+            backdrop-filter: blur(15px);
+            padding: 40px; 
+            border-radius: 4px;
+            color: #fff; 
+            z-index: 10;
+            width: 90%; 
+            max-width: 420px;
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            border-right: 4px solid #d4af37;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.8), inset 0 0 20px rgba(212, 175, 55, 0.05);
+            transition: opacity 1s cubic-bezier(0.4, 0, 0.2, 1), transform 1s cubic-bezier(0.4, 0, 0.2, 1);
+            opacity: 0; transform: translateY(30px) scale(0.98); pointer-events: none;
+        }
+
+        #info-ui h2 { 
+            font-family: 'Amiri', serif; margin-bottom: 20px; font-size: 32px; font-weight: 400; 
+            color: #e8c373; text-shadow: 0 2px 10px rgba(232, 195, 115, 0.3); position: relative; padding-bottom: 15px;
+        }
+
+        #info-ui h2::after {
+            content: ''; position: absolute; bottom: 0; right: 0; width: 60px; height: 2px;
+            background: #e8c373; box-shadow: 0 0 8px #e8c373;
+        }
+
+        #info-ui p { font-size: 16px; color: #dcdcdc; line-height: 2; font-weight: 300; transition: opacity 0.4s ease; }
+
+        #back-btn {
+            position: absolute; background: rgba(10, 15, 25, 0.7); backdrop-filter: blur(5px);
+            border: 1px solid rgba(232, 195, 115, 0.5); color: #e8c373; padding: 12px 40px;
+            font-family: 'Tajawal', sans-serif; font-size: 15px; font-weight: 500; letter-spacing: 1px; 
+            cursor: pointer; z-index: 10; border-radius: 2px;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            opacity: 0; pointer-events: none;
+        }
+
+        #back-btn:hover { 
+            background: #e8c373; color: #0a0f19; border-color: #e8c373;
+            box-shadow: 0 0 20px rgba(232, 195, 115, 0.5); transform: translateY(-2px);
+        }
+
+        @media (min-width: 768px) {
+            #info-ui { top: 50%; right: 6%; transform: translateY(-50%) translateX(40px) scale(0.95); }
+            #back-btn { bottom: 8%; left: 50%; transform: translateX(-50%); }
+            #info-ui.show-ui { transform: translateY(-50%) translateX(0) scale(1) !important; }
+        }
+
+        @media (max-width: 767px) {
+            #info-ui { bottom: 12%; left: 5%; right: 5%; width: 90%; max-width: none; padding: 25px; }
+            #info-ui h2 { font-size: 26px; }
+            #back-btn { top: 4%; left: 50%; transform: translateX(-50%); padding: 10px 30px; font-size: 13px; }
+            #info-ui.show-ui { transform: translateY(0) scale(1) !important; }
+        }
+
+        .show-ui { opacity: 1 !important; pointer-events: auto !important; }
+    </style>
+</head>
+<body>
+
+    <canvas id="webgl"></canvas>
+
+    <div id="info-ui">
+        <h2 id="info-title">المتحف الرافديني</h2>
+        <p id="info-desc">مرحباً بك في قاعة العرض الملكية.</p>
+    </div>
+
+    <button id="back-btn">العودة لمعاينة القاعة</button>
+
+    <script type="module">
+        // استدعاء المكتبات بروابط مباشرة ومضمونة لتعمل على GitHub Pages بدون مشاكل
+        import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+        import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js';
+        import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+
+        const canvas = document.querySelector('#webgl');
+        const scene = new THREE.Scene();
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        const originalCameraPos = new THREE.Vector3(0, 6, 22); 
+        camera.position.copy(originalCameraPos);
+
+        const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.toneMapping = THREE.ACESFilmicToneMapping; 
+        renderer.toneMappingExposure = 1.1;
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
+        renderer.shadowMap.enabled = true; 
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+        const controls = new OrbitControls(camera, canvas);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05; 
+        controls.autoRotate = true; 
+        controls.autoRotateSpeed = 0.4; 
+        controls.maxDistance = 22; 
+        controls.minDistance = 2;
+        controls.maxPolarAngle = Math.PI / 2 - 0.05; 
+
+        // الجدران الطينية
+        const roomGeometry = new THREE.BoxGeometry(40, 20, 40);
+        const roomMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x4a2e1b, 
+            roughness: 0.9, 
+            side: THREE.BackSide 
+        });
+        const room = new THREE.Mesh(roomGeometry, roomMaterial);
+        room.position.y = 9; 
+        scene.add(room);
+
+        // أرضية اللازورد المصقولة
+        const floorGeometry = new THREE.PlaneGeometry(40, 40);
+        const floorMaterial = new THREE.MeshPhysicalMaterial({ 
+            color: 0x152a55, 
+            metalness: 0.1,
+            roughness: 0.05, 
+            clearcoat: 1.0,  
+            clearcoatRoughness: 0.02 
+        });
+        const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.y = -1; 
+        floor.receiveShadow = true;
+        scene.add(floor);
+
+        const ambientLight = new THREE.AmbientLight(0xffeacc, 0.6); 
+        scene.add(ambientLight);
+
+        const roomLight = new THREE.PointLight(0xffd5a0, 150, 40);
+        roomLight.position.set(0, 12, 0);
+        scene.add(roomLight);
+
+        const spotlights = []; 
+        const pedestals = []; 
+
+        function createPedestal(xPos, isFirstArtifact) {
+            const pedGeo = new THREE.CylinderGeometry(1.5, 1.8, 2, 64);
+            const pedMat = new THREE.MeshStandardMaterial({ color: 0x2a1f18, roughness: 0.8 });
+            const pedestal = new THREE.Mesh(pedGeo, pedMat);
+            pedestal.position.set(xPos, 0, 0); 
+            pedestal.receiveShadow = true;
+            pedestal.castShadow = true;
+            scene.add(pedestal);
+            pedestals.push(pedestal);
+
+            const lightIntensity = isFirstArtifact ? 250 : 60; 
+            const lightColor = isFirstArtifact ? 0xffeaad : 0xffffff; 
+
+            const spotLight = new THREE.SpotLight(lightColor, lightIntensity);
+            spotLight.position.set(xPos, 14, 2); 
+            spotLight.angle = Math.PI / 7; 
+            spotLight.penumbra = 0.5; 
+            spotLight.castShadow = true;
+            spotLight.shadow.bias = -0.0001;
+            
+            const targetObject = new THREE.Object3D();
+            targetObject.position.set(xPos, 1, 0);
+            scene.add(targetObject);
+            spotLight.target = targetObject;
+            
+            scene.add(spotLight);
+            spotlights.push({ light: spotLight, originalIntensity: lightIntensity, originalColor: lightColor });
+
+            return pedestal;
+        }
+
+        createPedestal(-7, true); 
+        createPedestal(0, false);
+        createPedestal(7, false);
+
+        const loader = new GLTFLoader();
+        let interactiveObjects = [];
+        let currentFocusObject = null; 
+        let currentAngleZone = ''; 
+
+        // دالة تحميل المجسمات مع نظام التنبيه لمعرفة الأخطاء
+        function loadModel(path, xPos, name) {
+            loader.load(
+                path, 
+                (gltf) => {
+                    const model = gltf.scene;
+                    scene.add(model);
+                    
+                    const box = new THREE.Box3().setFromObject(model);
+                    const lowestPoint = box.min.y;
+                    
+                    model.position.set(xPos, (1 - lowestPoint), 0); 
+                    model.name = name;
+                    
+                    model.traverse((child) => {
+                        if (child.isMesh) {
+                            child.castShadow = true;
+                            child.receiveShadow = true;
+                        }
+                    });
+
+                    const updatedBox = new THREE.Box3().setFromObject(model);
+                    model.userData.center = updatedBox.getCenter(new THREE.Vector3()); 
+                    interactiveObjects.push(model);
+                },
+                undefined, 
+                (error) => {
+                    // هذا التنبيه سيظهر فقط إذا فشل تحميل المجسم
+                    console.error('خطأ في تحميل المجسم:', path, error);
+                    alert("الكود شغال تمام، بس المتصفح ما قدر يلقى هذا المجسم: " + path + "\nتأكد إن مجلد models موجود وإن أسماء الملفات مطابقة تماماً بالحروف (Capital/Small).");
+                }
+            );
+        }
+
+        loadModel('models/new1.glb', -7, 'التحفة الأولى (الرئيسية)'); 
+        loadModel('models/lampa.glb', 0, 'التحفة الثانية');
+        loadModel('models/new2.glb', 7, 'التحفة الثالثة');
+
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        function handleInteraction(event) {
+            if(currentFocusObject !== null) return; 
+
+            let clientX, clientY;
+            if(event.changedTouches) { 
+                clientX = event.changedTouches[0].clientX; clientY = event.changedTouches[0].clientY; 
+            } else { 
+                clientX = event.clientX; clientY = event.clientY; 
+            }
+
+            mouse.x = (clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(interactiveObjects, true);
+
+            if (intersects.length > 0) {
+                let clicked = intersects[0].object;
+                while(clicked.parent && clicked.parent.type !== "Scene") clicked = clicked.parent;
+
+                currentFocusObject = clicked; 
+                const targetPos = clicked.userData.center;
+                controls.autoRotate = false; 
+
+                const tl = gsap.timeline();
+
+                tl.to(ambientLight, { intensity: 0.1, duration: 1.5 }, 0); 
+                tl.to(roomLight, { intensity: 20, duration: 1.5 }, 0); 
+
+                spotlights.forEach((item) => {
+                    if(Math.abs(item.light.position.x - targetPos.x) < 1) {
+                        tl.to(item.light, { intensity: item.originalIntensity + 50, angle: Math.PI / 9, duration: 1.5 }, 0);
+                        tl.to(item.light.color, { r: 1, g: 0.85, b: 0.4, duration: 1.5 }, 0); 
+                    } else {
+                        tl.to(item.light, { intensity: 0, duration: 1.5 }, 0);
+                    }
+                });
+
+                tl.to(camera.position, {
+                    x: targetPos.x + 3, 
+                    y: targetPos.y + 1.5,
+                    z: targetPos.z + 4,
+                    duration: 2,
+                    ease: "power2.inOut"
+                }, 0) 
+
+                tl.to(controls.target, {
+                    x: targetPos.x,
+                    y: targetPos.y,
+                    z: targetPos.z,
+                    duration: 2,
+                    ease: "power2.inOut",
+                    onComplete: () => {
+                        currentAngleZone = ''; 
+                        updateDynamicInfo(); 
+                        document.getElementById('info-ui').classList.add('show-ui');
+                        document.getElementById('back-btn').classList.add('show-ui');
+                    }
+                }, 0); 
+            }
+        }
+
+        window.addEventListener('click', handleInteraction);
+        window.addEventListener('touchend', handleInteraction);
+
+        function updateDynamicInfo() {
+            if(!currentFocusObject) return;
+
+            let angleRad = Math.atan2(camera.position.x - controls.target.x, camera.position.z - controls.target.z);
+            let angleDeg = angleRad * (180 / Math.PI);
+            
+            let newZone = '';
+            if (angleDeg > -45 && angleDeg <= 45) newZone = 'front';
+            else if (angleDeg > 45 && angleDeg <= 135) newZone = 'right';
+            else if (angleDeg > -135 && angleDeg <= -45) newZone = 'left';
+            else newZone = 'back';
+
+            if (newZone !== currentAngleZone) {
+                currentAngleZone = newZone;
+                const infoTitle = document.getElementById('info-title');
+                const infoDesc = document.getElementById('info-desc');
+                
+                infoTitle.innerText = `${currentFocusObject.name}`;
+                
+                if (newZone === 'front') infoDesc.innerText = "الواجهة الأمامية. دقة النحت تبرز بوضوح تحت الإضاءة الموجهة.";
+                else if (newZone === 'back') infoDesc.innerText = "الجهة الخلفية. تأمل تفاصيل الظهر والتباين مع جدران القاعة الطينية.";
+                else if (newZone === 'right') infoDesc.innerText = "الجانب الأيمن. إضاءة المسرح تزيد القطعة مهابة وفخامة.";
+                else if (newZone === 'left') infoDesc.innerText = "الجانب الأيسر. تجربة استكشاف تفاعلية تليق بالتاريخ.";
+
+                gsap.fromTo(infoDesc, {opacity: 0, y: 10}, {opacity: 1, y: 0, duration: 0.5, ease: "power2.out"});
+            }
+        }
+
+        document.getElementById('back-btn').addEventListener('click', () => {
+            document.getElementById('info-ui').classList.remove('show-ui');
+            document.getElementById('back-btn').classList.remove('show-ui');
+
+            const tl = gsap.timeline();
+            
+            tl.to(camera.position, { x: originalCameraPos.x, y: originalCameraPos.y, z: originalCameraPos.z, duration: 2, ease: "power2.inOut" }, 0);
+            tl.to(controls.target, { x: 0, y: 0, z: 0, duration: 2, ease: "power2.inOut" }, 0);
+
+            tl.to(ambientLight, { intensity: 0.6, duration: 2 }, 0);
+            tl.to(roomLight, { intensity: 150, duration: 2 }, 0);
+
+            spotlights.forEach((item) => {
+                tl.to(item.light, { intensity: item.originalIntensity, angle: Math.PI / 7, duration: 2 }, 0);
+                tl.to(item.light.color, { r: (item.originalColor >> 16 & 255)/255, g: (item.originalColor >> 8 & 255)/255, b: (item.originalColor & 255)/255, duration: 2 }, 0); 
+            });
+
+            tl.call(() => {
+                currentFocusObject = null; 
+                currentAngleZone = '';     
+                controls.autoRotate = true; 
+            });
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update(); 
+            if(currentFocusObject !== null) updateDynamicInfo();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
