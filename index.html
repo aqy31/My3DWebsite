@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>متحف الموصل الافتراضي - العرض التفاعلي المطور</title>
+    <title>متحف الموصل الافتراضي - العرض التفاعلي</title>
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <style>
         body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #111; touch-action: none; }
@@ -71,7 +71,6 @@
     </style>
 
     <script>
-        // نظام تحكم بلاندر المطور (يدعم اللمس المتعدد)
         AFRAME.registerComponent('blender-controls', {
             schema: { speed: {default: 0.015}, zoomSpeed: {default: 0.08} },
             init: function () {
@@ -153,13 +152,15 @@
         <button id="close-info-btn" onclick="closeInfoPanel()">إغلاق الشرح</button>
     </div>
 
-    <a-scene id="main-scene" background="color: #1a1a1a" renderer="colorManagement: true;" cursor="rayOrigin: mouse" raycaster="objects: .clickable">
+    <a-scene id="main-scene" background="color: #1a1a1a" renderer="colorManagement: true;">
         <a-light type="ambient" color="#bbbbbb"></a-light>
         <a-light type="directional" intensity="1.5" position="1 4 2"></a-light>
         <a-grid material="color: #333" position="0 -0.01 0"></a-grid>
 
         <a-entity id="cameraRig" position="0 1.6 0" blender-controls>
-            <a-camera id="cam" look-controls></a-camera>
+            <a-camera id="cam" look-controls>
+                <a-cursor color="#e9d8a6" raycaster="objects: .clickable"></a-cursor>
+            </a-camera>
         </a-entity>
 
         <a-entity id="pillars-container"></a-entity>
@@ -179,15 +180,14 @@
             scale = Math.min(Math.max(0.3, scale), 3); pointX = e.clientX - xs * scale; pointY = e.clientY - ys * scale; updateMapTransform();
         };
 
-        // --- التعديل هنا: إضافة اسم الفولدر "models/" قبل اسم كل ملف ---
         const sitesData = {
             'site1': [ 
-                { id: 'p1', model: 'models/winged_bull.glb', x: -4, z: -4, scale: '1 1 1', rot: '0 45 0', title: 'الثور المجنح (لاماسو)', desc: 'تمثال ضخم برأس إنسان وجسد ثور وأجنحة نسر. كان يوضع على بوابات المدن لحمايتها من الأرواح الشريرة.' },
-                { id: 'p2', model: 'models/ashurbanipal.glb', x: 0, z: -6, scale: '1 1 1', rot: '0 0 0', title: 'الملك آشور بانيبال', desc: 'آخر الملوك العظماء للإمبراطورية الآشورية الحديثة. اشتهر بتأسيسه لأول وأعظم مكتبة منظمة في الشرق القديم.' },
-                { id: 'p3', model: 'models/cuneiform_tablet.glb', x: 4, z: -4, scale: '1 1 1', rot: '0 -45 0', title: 'لوح مسماري', desc: 'لوح طيني نُقش عليه بالكتابة المسمارية، يوثق علوم وقوانين وأدب بلاد الرافدين.' },
-                { id: 'p4', model: 'models/hassuna_pot.glb', x: 5, z: 2, scale: '1 1 1', rot: '0 90 0', title: 'إناء فخاري - حضارة حسونة', desc: 'يعود هذا الإناء الملون إلى موقع تل حسونة (جنوب الموصل)، ويمثل واحدة من أقدم القرى الزراعية في العالم.' },
-                { id: 'p5', model: 'models/nimrud_obelisk.glb', x: 0, z: 5, scale: '1 1 1', rot: '0 0 0', title: 'المسلة السوداء', desc: 'مسلة تاريخية تعود للملك شلمنصر الثالث، اكتُشفت في مدينة نمرود توثق انتصارات الملك.' },
-                { id: 'p6', model: 'models/spring_girl.glb', x: -5, z: 2, scale: '1 1 1', rot: '0 135 0', title: 'تمثال فتاة الربيع', desc: 'أحد الرموز الحديثة لمدينة الموصل، يجسد جمال المدينة التي تُلقب بـ "أم الربيعين".' }
+                { id: 'p1', model: './models/winged_bull.glb', x: -4, z: -4, scale: '1 1 1', rot: '0 45 0', title: 'الثور المجنح (لاماسو)', desc: 'تمثال ضخم برأس إنسان وجسد ثور وأجنحة نسر. كان يوضع على بوابات المدن لحمايتها من الأرواح الشريرة.' },
+                { id: 'p2', model: './models/ashurbanipal.glb', x: 0, z: -6, scale: '1 1 1', rot: '0 0 0', title: 'الملك آشور بانيبال', desc: 'آخر الملوك العظماء للإمبراطورية الآشورية الحديثة. اشتهر بتأسيسه لأول وأعظم مكتبة منظمة في الشرق القديم.' },
+                { id: 'p3', model: './models/cuneiform_tablet.glb', x: 4, z: -4, scale: '1 1 1', rot: '0 -45 0', title: 'لوح مسماري', desc: 'لوح طيني نُقش عليه بالكتابة المسمارية، يوثق علوم وقوانين وأدب بلاد الرافدين.' },
+                { id: 'p4', model: './models/hassuna_pot.glb', x: 5, z: 2, scale: '1 1 1', rot: '0 90 0', title: 'إناء فخاري - حضارة حسونة', desc: 'يعود هذا الإناء الملون إلى موقع تل حسونة (جنوب الموصل)، ويمثل واحدة من أقدم القرى الزراعية في العالم.' },
+                { id: 'p5', model: './models/nimrud_obelisk.glb', x: 0, z: 5, scale: '1 1 1', rot: '0 0 0', title: 'المسلة السوداء', desc: 'مسلة تاريخية تعود للملك شلمنصر الثالث، اكتُشفت في مدينة نمرود توثق انتصارات الملك.' },
+                { id: 'p6', model: './models/spring_girl.glb', x: -5, z: 2, scale: '1 1 1', rot: '0 135 0', title: 'تمثال فتاة الربيع', desc: 'أحد الرموز الحديثة لمدينة الموصل، يجسد جمال المدينة التي تُلقب بـ "أم الربيعين".' }
             ],
             'site2': [ { id: 'p7', color: '#005f73', x: -3, z: -3 }, { id: 'p8', color: '#0a9396', x: 3, z: -3 } ]
         };
